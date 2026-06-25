@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<!-- Estrutura baseada no código original[cite: 1] -->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sortify — Raffle Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Share+Tech+Mono&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --accent: #7F77DD;
+    --accent2: #1D9E75;
+    --accent-dim: rgba(127,119,221,0.15);
+    --accent-glow: rgba(127,119,221,0.35);
+    --bg-dark: #09090f;
+    --bg-panel: rgba(15,15,28,0.82);
+    --bg-surface: rgba(22,22,40,0.9);
+    --border: rgba(127,119,221,0.2);
+    --border-bright: rgba(127,119,221,0.5);
+    --text: #e8e6f8;
+    --text-muted: rgba(232,230,248,0.5);
+    --text-dim: rgba(232,230,248,0.3);
+    --red: #E24B4A;
+    --green: #1D9E75;
+    --r: 10px;
+    --r-lg: 16px;
+  }
+
+  html, body {
+    height: 100%;
+    font-family: 'Inter', sans-serif;
+    color: var(--text);
+    overflow: hidden;
+  }
+
+  /* ── BACKGROUND ── */
+  #bg {
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 80%, rgba(127,119,221,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 20%, rgba(29,158,117,0.08) 0%, transparent 55%),
+      #09090f;
+  }
+
+  #bg::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(127,119,221,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(127,119,221,0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  #bg::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.06) 2px,
+      rgba(0,0,0,0.06) 4px
+    );
+    pointer-events: none;
+  }
+
+  /* ── PARTICLES ── */
+  #particles {
+    position: fixed; inset: 0; z-index: 1;
+    pointer-events: none;
+  }
+
+  .particle {
+    position: absolute;
+    border-radius: 50%;
+    animation: float linear infinite;
+    opacity: 0;
+  }
+
+  @keyframes float {
+    0%   { transform: translateY(100vh) scale(0); opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 0.5; }
+    100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+  }
+
+  /* ── PAGES ── */
+  .page {
+    position: fixed; inset: 0; z-index: 10;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 2rem;
+  }
+
+  .page.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(20px);
+  }
+
+  /* ── HOME ── */
+  #home {
+    text-align: center;
+  }
+
+  .logo-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid var(--border-bright);
+    border-radius: 100px;
+    padding: 6px 16px;
+    margin-bottom: 2rem;
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  .logo-badge .dot {
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 4px var(--accent); }
+    50% { opacity: 0.3; box-shadow: none; }
+  }
+
+  .home-title {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(3rem, 10vw, 7rem);
+    font-weight: 900;
+    line-height: 0.9;
+    letter-spacing: -0.02em;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, #fff 30%, var(--accent) 70%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .home-sub {
+    font-size: clamp(1rem, 2.5vw, 1.25rem);
+    color: var(--text-muted);
+    max-width: 480px;
+    margin: 0 auto 3rem;
+    line-height: 1.6;
+    font-weight: 300;
+  }
+
+  .btn-group {
+    display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: 'Orbitron', monospace;
+    font-size: 12px; font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 14px 28px;
+    border-radius: var(--r);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+  }
+
+  .btn-primary:hover {
+    background: #9490e8;
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(127,119,221,0.35);
+  }
+
+  .btn-primary:active { transform: translateY(0) scale(0.97); }
+
+  .features {
+    display: flex; gap: 2rem; justify-content: center; flex-wrap: wrap;
+    margin-top: 4rem;
+  }
+
+  .feat {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 1.25rem 1.5rem;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    min-width: 140px;
+    backdrop-filter: blur(12px);
+  }
+
+  .feat-icon {
+    font-size: 24px;
+    width: 48px; height: 48px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--accent-dim);
+    border-radius: var(--r);
+    margin-bottom: 4px;
+  }
+
+  .feat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    font-weight: 300;
+  }
+
+  .feat-val {
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+  }
+
+  /* ── APP ── */
+  #app-page {
+    justify-content: flex-start;
+    padding-top: 1.5rem;
+    max-width: 960px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .app-header {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; margin-bottom: 1.5rem;
+    flex-wrap: wrap; gap: 1rem;
+  }
+
+  .app-logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent);
+    display: flex; align-items: center; gap: 8px;
+    letter-spacing: 0.08em;
+  }
+
+  .btn-back {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-back:hover { color: var(--text); border-color: var(--border-bright); }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex; gap: 4px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 4px;
+    margin-bottom: 1.25rem;
+    backdrop-filter: blur(12px);
+  }
+
+  .tab {
+    flex: 1;
+    padding: 8px;
+    border-radius: 7px;
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    transition: all 0.2s;
+  }
+
+  .tab.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  /* ── GRID ── */
+  .grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
+
+  /* ── PANEL ── */
+  .panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 1.1rem;
+    backdrop-filter: blur(14px);
+  }
+
+  .panel-label {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 0.75rem;
+    font-family: 'Orbitron', monospace;
+  }
+
+  textarea, input[type=text], input[type=number], select {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+    appearance: none;
+  }
+
+  textarea { resize: vertical; min-height: 100px; }
+
+  textarea:focus, input:focus, select:focus {
+    border-color: var(--border-bright);
+  }
+
+  input[type=number] { width: 72px; text-align: center; }
+
+  select option { background: #0d0d1f; color: var(--text); }
+
+  .row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+
+  .range-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .range-row label {
+    font-size: 11px; color: var(--text-muted);
+    min-width: 72px; font-weight: 300;
+  }
+
+  .range-row span {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px; color: var(--accent);
+    min-width: 28px; text-align: right;
+  }
+
+  input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 3px;
+    background: rgba(127,119,221,0.2);
+    border-radius: 2px;
+    outline: none;
+    padding: 0; border: none;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    transition: box-shadow 0.2s;
+  }
+
+  input[type=range]::-webkit-slider-thumb:hover {
+    box-shadow: 0 0 0 4px var(--accent-glow);
+  }
+
+  /* ── BUTTONS ── */
+  .action-row {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin: 1rem 0;
+  }
+
+  .btn-sort {
+    font-family: 'Orbitron', monospace;
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 0.12em;
+    padding: 12px 24px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--r);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .btn-sort:hover { background: #9490e8; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(127,119,221,0.4); }
+  .btn-sort:active { transform: scale(0.97); }
+  .btn-sort:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  .btn-ghost {
+    font-size: 12px; font-family: 'Orbitron', monospace;
+    letter-spacing: 0.08em;
+    padding: 10px 16px;
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-ghost:hover { color: var(--text); border-color: var(--border-bright); }
+
+  /* ── DISPLAY ── */
+  .display-box {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 2rem 1.5rem;
+    margin-bottom: 1rem;
+    min-height: 140px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(14px);
+  }
+
+  .display-box::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.6;
+  }
+
+  .result-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px; letter-spacing: 0.25em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  .result-value {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(24px, 5vw, 44px);
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+    line-height: 1.2;
+    word-break: break-all;
+  }
+
+  .result-value.animate {
+    animation: glitch 0.45s steps(8) forwards;
+  }
+
+  @keyframes glitch {
+    0%   { opacity: 0.1; transform: skewX(8deg) scaleX(0.96); filter: hue-rotate(60deg); }
+    20%  { opacity: 0.9; transform: skewX(-4deg); filter: hue-rotate(0deg); }
+    40%  { opacity: 0.5; transform: translateX(3px); }
+    60%  { opacity: 1;   transform: none; }
+    80%  { opacity: 0.85; }
+    100% { opacity: 1;   transform: none; filter: none; }
+  }
+
+  .result-sub {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px; color: var(--text-muted);
+    margin-top: 10px;
+  }
+
+  .prog-bar {
+    width: 100%; height: 3px;
+    background: rgba(127,119,221,0.1);
+    border-radius: 2px;
+    margin-top: 16px;
+    overflow: hidden;
+  }
+
+  .prog-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px;
+    transition: width 0.15s linear;
+  }
+
+  /* ── STATS ── */
+  .stats-row {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 8px; margin-bottom: 1rem;
+  }
+
+  .stat {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 12px;
+    text-align: center;
+    backdrop-filter: blur(14px);
+  }
+
+  .stat-val {
+    font-family: 'Orbitron', monospace;
+    font-size: 22px; font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-lbl {
+    font-size: 10px; color: var(--text-dim);
+    letter-spacing: 0.1em; text-transform: uppercase;
+  }
+
+  /* ── HISTORY ── */
+  .history-wrap {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 1rem 1.1rem;
+    backdrop-filter: blur(14px);
+    margin-bottom: 1.5rem;
+  }
+
+  .hist-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 0.75rem;
+  }
+
+  .tag-list {
+    max-height: 120px; overflow-y: auto;
+  }
+  
+  .tag-group {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    border: 1px solid var(--border-bright);
+    color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  .section-hidden { display: none; }
+
+  /* ── COPY TOAST ── */
+  #toast {
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-bright);
+    border-radius: 100px;
+    padding: 10px 24px;
+    font-family: 'Orbitron', monospace;
+    font-size: 11px; letter-spacing: 0.1em;
+    color: var(--accent2);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none;
+  }
+
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- ── BACKGROUND ── -->
+<div id="bg"></div>
+<canvas id="particles" style="position:fixed;inset:0;z-index:1;pointer-events:none;"></canvas>
+
+<!-- ── TOAST ── -->
+<div id="toast">✓ Copiado para a área de transferência</div>
+
+<!-- ══════════════ HOME ══════════════ -->
+<section class="page" id="home">
+  <div class="logo-badge"><span class="dot"></span>Raffle Engine v2.0</div>
+
+  <h1 class="home-title">SORTIFY</h1>
+
+  <p class="home-sub">
+    Sorteador futurista de nomes e números.<br>
+    Sem repetições. Totalmente customizável.
+  </p>
+
+  <div class="btn-group">
+    <button class="btn btn-primary" onclick="goToApp()">
+      ⚡ Iniciar Sorteio
+    </button>
+  </div>
+
+  <div class="features" id="feats">
+    <div class="feat">
+      <div class="feat-icon">🎯</div>
+      <div class="feat-val">Sem repetição</div>
+      <div class="feat-label">Pool dinâmico de itens</div>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🔢</div>
+      <div class="feat-val">Nomes & Números</div>
+      <div class="feat-label">Dois modos de sorteio</div>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">⚙️</div>
+      <div class="feat-val">Customizável</div>
+      <div class="feat-label">Intervalo, formato e quantidade</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ APP ══════════════ -->
+<section class="page hidden" id="app-page">
+
+  <div class="app-header">
+    <div class="app-logo">
+      <span style="color:var(--accent2);">▶</span> SORTIFY
+    </div>
+    <button class="btn-back" onclick="goHome()">← Voltar ao início</button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs" style="width:100%;">
+    <button class="tab active" id="tab-nomes" onclick="setTab('nomes')">Nomes</button>
+    <button class="tab" id="tab-numeros" onclick="setTab('numeros')">Números</button>
+  </div>
+
+  <!-- Nomes section -->
+  <div id="sec-nomes" style="width:100%;">
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-label">Lista de participantes</div>
+        <textarea id="names-input" placeholder="Ana&#10;Bruno&#10;Carlos&#10;Diana&#10;Eduardo"></textarea>
+        <div class="row" style="margin-top:8px; justify-content:space-between;">
+          <span id="names-count" style="font-size:11px;color:var(--text-dim);font-family:'Share Tech Mono',monospace;">0 nomes</span>
+          <button class="btn-ghost" style="padding:5px 12px;font-size:11px;" onclick="clearNames()">Limpar</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-label">Configurações</div>
+        <div class="range-row">
+          <label>Qtd. sortear</label>
+          <input type="range" id="names-qty" min="1" max="20" value="1"
+            oninput="document.getElementById('names-qty-lbl').textContent=this.value">
+          <span id="names-qty-lbl">1</span>
+        </div>
+        <div class="range-row" style="margin-top:6px;">
+          <label>Velocidade</label>
+          <input type="range" id="names-speed" min="1" max="5" value="3">
+          <span id="names-speed-lbl" style="font-size:11px;color:var(--accent);">▮▮▮▯▯</span>
+        </div>
+        <div style="margin-top:12px;">
+          <div class="panel-label" style="margin-bottom:6px;">Ordenação</div>
+          <select id="names-sort">
+            <option value="draw">Ordem de sorteio</option>
+            <option value="alpha">Alfabética</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Números section -->
+  <div id="sec-numeros" class="section-hidden" style="width:100%;">
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-label">Intervalo numérico</div>
+        <div class="row">
+          <span style="font-size:12px;color:var(--text-muted);">De</span>
+          <input type="number" id="num-min" value="1">
+          <span style="font-size:12px;color:var(--text-muted);">Até</span>
+          <input type="number" id="num-max" value="100">
+        </div>
+        <div style="margin-top:12px;">
+          <div class="panel-label" style="margin-bottom:6px;">Formato de saída</div>
+          <select id="num-format">
+            <option value="normal">Número simples</option>
+            <option value="pad">Com zeros (001)</option>
+            <option value="hex">Hexadecimal</option>
+          </select>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-label">Configurações</div>
+        <div class="range-row">
+          <label>Qtd. sortear</label>
+          <input type="range" id="nums-qty" min="1" max="30" value="1"
+            oninput="document.getElementById('nums-qty-lbl').textContent=this.value">
+          <span id="nums-qty-lbl">1</span>
+        </div>
+        <div class="range-row" style="margin-top:6px;">
+          <label>Velocidade</label>
+          <input type="range" id="nums-speed" min="1" max="5" value="3">
+          <span style="font-size:11px;color:var(--accent);">▮▮▮▯▯</span>
+        </div>
+        <div style="margin-top:12px;">
+          <div class="panel-label" style="margin-bottom:6px;">Exibição</div>
+          <select id="nums-display">
+            <option value="all">Todos de uma vez</option>
+            <option value="one">Um por um</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action buttons -->
+  <div class="action-row" style="width:100%;">
+    <button class="btn-sort" id="btn-sort" onclick="sortear()">⚡ Sortear</button>
+    <button class="btn-ghost" onclick="resetPool()">↺ Reiniciar pool</button>
+    <button class="btn-ghost" onclick="copiarResultado()">Copiar resultado</button>
+  </div>
+
+  <!-- Display box -->
+  <div class="display-box" style="width:100%;" id="display-box">
+    <div class="result-label" id="result-label">Aguardando sorteio</div>
+    <div class="result-value" id="result-value" style="font-family:'Orbitron',monospace;">—</div>
+    <div class="result-sub" id="result-sub"></div>
+    <div class="prog-bar" id="prog-bar" style="display:none;width:80%;">
+      <div class="prog-fill" id="prog-fill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row" style="width:100%;">
+    <div class="stat"><div class="stat-val" id="stat-total">0</div><div class="stat-lbl">Total</div></div>
+    <div class="stat"><div class="stat-val" id="stat-sorteados">0</div><div class="stat-lbl">Sorteados</div></div>
+    <div class="stat"><div class="stat-val" id="stat-restantes">0</div><div class="stat-lbl">Restantes</div></div>
+  </div>
+
+  <!-- History -->
+  <div class="history-wrap" style="width:100%;">
+    <div class="hist-header">
+      <div class="panel-label" style="margin:0;">Histórico de sorteados</div>
+      <button class="btn-ghost" style="padding:5px 12px;font-size:10px;" onclick="limparHistorico()">Limpar</button>
+    </div>
+    <div class="tag-list" id="tag-list">
+      <span style="font-size:12px;color:var(--text-dim);font-family:'Share Tech Mono',monospace;">Nenhum sorteio realizado ainda.</span>
+    </div>
+  </div>
+
+</section>
+
+<script>
+/* ── PARTICLES ── */
+(function(){
+  const canvas = document.getElementById('particles');
+  const ctx = canvas.getContext('2d');
+  let pts = [];
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+
+  function make() {
+    return {
+      x: Math.random() * canvas.width,
+      y: canvas.height + 10,
+      r: Math.random() * 1.5 + 0.5,
+      speed: Math.random() * 0.6 + 0.2,
+      opacity: 0,
+      maxOp: Math.random() * 0.5 + 0.2,
+      color: Math.random() > 0.5 ? '127,119,221' : '29,158,117'
+    };
+  }
+
+  function tick() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (pts.length < 60) pts.push(make());
+
+    pts = pts.filter(p => {
+      p.y -= p.speed;
+      p.opacity = Math.min(p.maxOp, p.opacity + 0.005);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(${p.color},${p.opacity})`;
+      ctx.fill();
+      return p.y > -10;
+    });
+
+    requestAnimationFrame(tick);
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+  tick();
+})();
+
+/* ── NAVIGATION ── */
+function goToApp() {
+  document.getElementById('home').classList.add('hidden');
+  document.getElementById('app-page').classList.remove('hidden');
+  resetPool();
+}
+
+function goHome() {
+  document.getElementById('app-page').classList.add('hidden');
+  document.getElementById('home').classList.remove('hidden');
+}
+
+/* ── TAB + STATE ── */
+let currentTab = 'nomes';
+let namesPool = [];
+let numsPool = [];
+let historyDraws = [];
+let animInterval = null;
+
+function setTab(t) {
+  currentTab = t;
+  document.getElementById('tab-nomes').classList.toggle('active', t === 'nomes');
+  document.getElementById('tab-numeros').classList.toggle('active', t === 'numeros');
+  document.getElementById('sec-nomes').classList.toggle('section-hidden', t !== 'nomes');
+  document.getElementById('sec-numeros').classList.toggle('section-hidden', t !== 'numeros');
+  resetPool();
+}
+
+const namesInput = document.getElementById('names-input');
+namesInput.addEventListener('input', () => {
+  const n = parseNames();
+  document.getElementById('names-count').textContent = n.length + ' nome' + (n.length !== 1 ? 's' : '');
+});
+
+function parseNames() {
+  return namesInput.value.split('\n').map(s => s.trim()).filter(Boolean);
+}
+
+function clearNames() {
+  namesInput.value = '';
+  document.getElementById('names-count').textContent = '0 nomes';
+  resetPool();
+}
+
+function resetPool() {
+  if (currentTab === 'nomes') {
+    namesPool = parseNames();
+  } else {
+    const min = parseInt(document.getElementById('num-min').value) || 1;
+    const max = parseInt(document.getElementById('num-max').value) || 100;
+    numsPool = [];
+    for (let i = min; i <= max; i++) numsPool.push(i);
+  }
+  historyDraws = [];
+  updateStats();
+  document.getElementById('result-value').textContent = '—';
+  document.getElementById('result-label').textContent = 'Pool reiniciado';
+  document.getElementById('result-sub').textContent = '';
+  document.getElementById('prog-bar').style.display = 'none';
+  renderHistory();
+}
+
+function updateStats() {
+  const pool = currentTab === 'nomes' ? namesPool : numsPool;
+  const total = currentTab === 'nomes'
+    ? parseNames().length
+    : (parseInt(document.getElementById('num-max').value) || 100) - (parseInt(document.getElementById('num-min').value) || 1) + 1;
+  const totalDrawn = historyDraws.reduce((acc, draw) => acc + draw.length, 0);
+  
+  document.getElementById('stat-total').textContent = Math.max(0, total);
+  document.getElementById('stat-sorteados').textContent = totalDrawn;
+  document.getElementById('stat-restantes').textContent = pool.length;
+}
+
+function formatNum(n) {
+  const fmt = document.getElementById('num-format').value;
+  if (fmt === 'pad') return String(n).padStart(3, '0');
+  if (fmt === 'hex') return '0x' + n.toString(16).toUpperCase().padStart(2, '0');
+  return String(n);
+}
+
+/* ── SORTEAR ── */
+function sortear() {
+  if (animInterval) return;
+  const isNomes = currentTab === 'nomes';
+  const pool = isNomes ? namesPool : numsPool;
+
+  const resultEl = document.getElementById('result-value');
+  const labelEl = document.getElementById('result-label');
+  const subEl = document.getElementById('result-sub');
+  const progBar = document.getElementById('prog-bar');
+  const progFill = document.getElementById('prog-fill');
+  const btn = document.getElementById('btn-sort');
+
+  if (pool.length === 0) {
+    resultEl.textContent = 'Pool vazio!';
+    labelEl.textContent = '⚠ Sem itens';
+    subEl.textContent = isNomes ? 'Adicione nomes ou reinicie.' : 'Ajuste o intervalo.';
+    return;
+  }
+
+  const qty = parseInt(document.getElementById(isNomes ? 'names-qty' : 'nums-qty').value);
+  const speed = parseInt(document.getElementById(isNomes ? 'names-speed' : 'nums-speed').value);
+  const actualQty = Math.min(qty, pool.length);
+  const delay = [110, 85, 55, 35, 20][speed - 1];
+  const duration = 700 + actualQty * 60;
+
+  btn.disabled = true;
+  progBar.style.display = 'block';
+  progFill.style.width = '0%';
+  labelEl.textContent = '▶ Sorteando...';
+  subEl.textContent = '';
+
+  let elapsed = 0;
+
+  animInterval = setInterval(() => {
+    elapsed += delay;
+    const pct = Math.min(100, (elapsed / duration) * 100);
+    progFill.style.width = pct + '%';
+
+    const tempPool = [...pool];
+    const sample = [];
+    const n = Math.min(actualQty, tempPool.length);
+    for (let i = 0; i < n; i++) {
+      const idx = Math.floor(Math.random() * tempPool.length);
+      sample.push(tempPool.splice(idx, 1)[0]);
+    }
+    resultEl.textContent = isNomes ? sample.join(' · ') : sample.map(formatNum).join(' · ');
+
+    if (elapsed >= duration) {
+      clearInterval(animInterval);
+      animInterval = null;
+      btn.disabled = false;
+
+      const chosen = [];
+      for (let i = 0; i < actualQty; i++) {
+        if (!pool.length) break;
+        const idx = Math.floor(Math.random() * pool.length);
+        chosen.push(pool.splice(idx, 1)[0]);
+      }
+
+      const sort = isNomes ? document.getElementById('names-sort').value : 'draw';
+      const display = sort === 'alpha' ? [...chosen].sort() : chosen;
+
+      resultEl.textContent = isNomes ? display.join(' · ') : display.map(formatNum).join(' · ');
+      resultEl.classList.remove('animate');
+      void resultEl.offsetWidth;
+      resultEl.classList.add('animate');
+
+      labelEl.textContent = actualQty === 1 ? '✓ Sorteado' : `✓ ${actualQty} itens sorteados`;
+      subEl.textContent = `${pool.length} restante${pool.length !== 1 ? 's' : ''} no pool`;
+      progFill.style.width = '100%';
+
+      const formattedChosen = chosen.map(c => isNomes ? c : formatNum(c));
+      historyDraws.push(formattedChosen);
+      
+      updateStats();
+      renderHistory();
+    }
+  }, delay);
+}
+
+function renderHistory() {
+  const tl = document.getElementById('tag-list');
+  if (!historyDraws.length) {
+    tl.innerHTML = '<span style="font-size:12px;color:var(--text-dim);font-family:\'Share Tech Mono\',monospace;">Nenhum sorteio realizado ainda.</span>';
+    return;
+  }
+  
+  tl.innerHTML = historyDraws.map((draw, i) => `
+    <div style="width: 100%; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+      <div style="font-size: 11px; color: var(--accent); font-family: 'Orbitron', monospace; margin-bottom: 8px;">${i + 1}º Sorteio</div>
+      <div class="tag-group">
+        ${draw.map(h => `<span class="tag">${h}</span>`).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function limparHistorico() {
+  historyDraws = [];
+  renderHistory();
+  updateStats();
+}
+
+function copiarResultado() {
+  const val = document.getElementById('result-value').textContent;
+  if (val && val !== '—') {
+    navigator.clipboard.writeText(val).catch(() => {});
+    const toast = document.getElementById('toast');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+  }
+}
+
+resetPool();
+</script>
+</body>
+</html>
